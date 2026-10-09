@@ -3,6 +3,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Read the per-session token rendered in the shared page header for write requests.
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
+  // Toggle the compact mobile navigation and keep its accessible state in sync.
+  const navbar = document.querySelector('.topbar');
+  const navToggle = document.querySelector('.nav-toggle');
+  const primaryNavigation = document.querySelector('#primary-navigation');
+  const closeNavigation = () => {
+    navbar?.classList.remove('nav-open');
+    navToggle?.setAttribute('aria-expanded', 'false');
+    navToggle?.setAttribute('aria-label', 'Open navigation');
+  };
+  navToggle?.addEventListener('click', () => {
+    const open = navToggle.getAttribute('aria-expanded') !== 'true';
+    navbar?.classList.toggle('nav-open', open);
+    navToggle.setAttribute('aria-expanded', String(open));
+    navToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+  });
+  primaryNavigation?.querySelectorAll('a').forEach(link => link.addEventListener('click', closeNavigation));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeNavigation(); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 760) closeNavigation(); });
+
   // Keep interface prompts short while leaving member recipes and comments untouched.
   const heroIntro = document.querySelector('.hero-copy > p:not(.eyebrow)');
   if (heroIntro) heroIntro.textContent = 'Recipes from neighbors, made for sharing.';

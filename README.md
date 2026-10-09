@@ -9,6 +9,8 @@ A responsive neighborhood recipe-sharing site built with plain PHP, sessions, OO
 3. If your local MySQL credentials differ from the XAMPP defaults, update the connection settings in `db.php`.
 4. Visit `http://localhost/MidtermMilestoneProj-Senajon/` and register an account.
 
+To load three example recipes after registering, import `sample_recipes.sql`. The examples are assigned to the first registered member and can be re-imported without creating duplicate recipes or ingredients.
+
 
 ## Data model
 
