@@ -1,44 +1,22 @@
 <?php
 // Recipe create/edit page: load owned recipe data, validate input, and save recipe plus ingredients atomically.
-require_once __DIR__.'/helpers.php';require_login();$id=filter_var($_GET['id']??$_POST['id']??null,FILTER_VALIDATE_INT);$editing=(bool)$id;$errors=[];$cats=categories($pdo);$form=['title'=>'','description'=>'','category_id'=>0,'instructions'=>'','servings'=>4,'cook_minutes'=>30,'ingredients'=>['']];
+require_once __DIR__.'/helpers.php';require_login();$id=filter_var($_GET['id']??$_POST['id']??null,FILTER_VALIDATE_INT);$editing=(bool)$id;$errors=[];$cats=categories($pdo);$recipeModel=new Recipe($pdo);$form=['title'=>'','description'=>'','category_id'=>0,'instructions'=>'','servings'=>4,'cook_minutes'=>30,'ingredients'=>['']];
 // Load existing recipe and ingredient data only when the owner opens edit mode.
 if ($editing) {
-    $q = $pdo->prepare('SELECT * FROM recipes WHERE id=? AND user_id=?');
-    $q->execute([$id, (int)$_SESSION['user']['id']]);
-    $existing = $q->fetch();
+    $existing = $recipeModel->findOwned((int)$id, (int)$_SESSION['user']['id']);
     if (!$existing) { http_response_code(404); exit('Recipe not found or you do not have permission to edit it.'); }
-    $q = $pdo->prepare('SELECT ingredient FROM ingredients WHERE recipe_id=? ORDER BY position');
-    $q->execute([$id]);
-    $form = array_merge($existing, ['ingredients' => array_column($q->fetchAll(), 'ingredient')]);
+    $form = array_merge($existing, ['ingredients' => array_column($recipeModel->ingredients((int)$id), 'ingredient')]);
 }
 
-// Validate the recipe, then save it and its ingredient rows in one transaction.
+// Validate the recipe and delegate transactional persistence to the Recipe model.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     [$form, $errors] = recipe_input($pdo);
     if (!$errors) {
-        $pdo->beginTransaction();
-        try {
-            if ($editing) {
-                $q = $pdo->prepare('UPDATE recipes SET category_id=?,title=?,description=?,instructions=?,servings=?,cook_minutes=?,edited_at=NOW() WHERE id=? AND user_id=?');
-                $q->execute([$form['category_id'], $form['title'], $form['description'], $form['instructions'], $form['servings'], $form['cook_minutes'], $id, (int)$_SESSION['user']['id']]);
-                $recipeId = (int)$id;
-                $pdo->prepare('DELETE FROM ingredients WHERE recipe_id=?')->execute([$recipeId]);
-            } else {
-                $q = $pdo->prepare('INSERT INTO recipes(user_id,category_id,title,description,instructions,servings,cook_minutes) VALUES(?,?,?,?,?,?,?)');
-                $q->execute([(int)$_SESSION['user']['id'], $form['category_id'], $form['title'], $form['description'], $form['instructions'], $form['servings'], $form['cook_minutes']]);
-                $recipeId = (int)$pdo->lastInsertId();
-            }
-            $q = $pdo->prepare('INSERT INTO ingredients(recipe_id,position,ingredient) VALUES(?,?,?)');
-            foreach ($form['ingredients'] as $position => $ingredient) $q->execute([$recipeId, $position + 1, $ingredient]);
-            $pdo->commit();
-            flash($editing ? 'Recipe updated.' : 'Recipe shared!');
-            header('Location: recipe.php?id=' . $recipeId);
-            exit;
-        } catch (Throwable $exception) {
-            $pdo->rollBack();
-            throw $exception;
-        }
+        $recipeId = $recipeModel->save($form, $form['ingredients'], (int)$_SESSION['user']['id'], $editing ? (int)$id : null);
+        flash($editing ? 'Recipe updated.' : 'Recipe shared!');
+        header('Location: recipe.php?id=' . $recipeId);
+        exit;
     }
 }
 $pageTitle=$editing?'Edit recipe':'Share a recipe';require __DIR__.'/header.php';?>

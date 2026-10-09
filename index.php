@@ -2,12 +2,8 @@
 // Member home: filter recipes with bound parameters, then render newest community posts first.
 require_once __DIR__ . '/helpers.php'; require_login();
 $term = trim((string)($_GET['q'] ?? '')); $category = filter_var($_GET['category'] ?? '', FILTER_VALIDATE_INT);
-$sql = 'SELECT r.*, c.name category, u.name author, (SELECT COUNT(*) FROM comments cm WHERE cm.recipe_id=r.id) comment_count, (SELECT COUNT(*) FROM favorites f WHERE f.recipe_id=r.id) favorite_count, EXISTS(SELECT 1 FROM favorites mine WHERE mine.recipe_id=r.id AND mine.user_id=?) is_favorite FROM recipes r JOIN categories c ON c.id=r.category_id JOIN users u ON u.id=r.user_id';
-$where = []; $params = [(int)$_SESSION['user']['id']];
-if ($term !== '') { $where[] = '(r.title LIKE ? OR r.description LIKE ? OR EXISTS(SELECT 1 FROM ingredients i WHERE i.recipe_id=r.id AND i.ingredient LIKE ?))'; $like='%'.$term.'%'; array_push($params,$like,$like,$like); }
-if ($category) { $where[] = 'r.category_id=?'; $params[]=$category; }
-if ($where) $sql .= ' WHERE '.implode(' AND ', $where);
-$sql .= ' ORDER BY r.created_at DESC, r.id DESC'; $stmt=$pdo->prepare($sql); $stmt->execute($params); $recipes=$stmt->fetchAll(); $cats=categories($pdo);
+$recipes = (new Recipe($pdo))->search((int)$_SESSION['user']['id'], $term, $category ?: null);
+$cats = categories($pdo);
 $pageTitle='Community recipes'; require __DIR__.'/header.php';
 ?>
 <section class="hero"><div class="hero-copy"><p class="eyebrow">OUR NEIGHBORHOOD RECIPE BOOK</p><h1>Good food brings<br><em>us together.</em></h1><p>Recipes from home cooks around the barangay, made to be passed around.</p><a class="button button-light" href="recipe_form.php">Share what’s cooking <span>↗</span></a></div><div class="hero-art" aria-hidden="true"><div class="sun"></div><span class="hero-doodle">✳</span><div class="plate"><div class="plate-inner"><span>🍲</span></div></div><div class="hero-note">lutong bahay,<br>kwentong atin</div></div><div class="hero-bottom"><span>FRESH FROM OUR COMMUNITY</span><span>SCROLL TO EXPLORE ↓</span></div></section>

@@ -2,6 +2,7 @@
 // Shared bootstrap: opens the database, starts the session, and defines reusable safeguards.
 declare(strict_types=1);
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/models.php';
 
 // Use an HttpOnly session cookie so browser scripts cannot read the login identifier.
 if (session_status() !== PHP_SESSION_ACTIVE) {
