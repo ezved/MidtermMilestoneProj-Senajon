@@ -1,0 +1,12 @@
+<?php
+// Registration page: validate credentials, prevent duplicate email accounts, and hash passwords.
+require_once __DIR__.'/helpers.php'; if(signed_in()){header('Location: index.php');exit;} $errors=[]; $name=''; $email='';
+if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf();$name=trim((string)($_POST['name']??''));$email=strtolower(trim((string)($_POST['email']??'')));$pass=(string)($_POST['password']??'');
+ if(mb_strlen($name)<2||mb_strlen($name)>80)$errors[]='Name must be 2–80 characters.';
+ if(!filter_var($email,FILTER_VALIDATE_EMAIL)||strlen($email)>254)$errors[]='Enter a valid email address.';
+ if(strlen($pass)<8||strlen($pass)>72)$errors[]='Password must be 8–72 characters.';
+ if(!$errors){$q=$pdo->prepare('SELECT id FROM users WHERE email=?');$q->execute([$email]);if($q->fetch())$errors[]='That email is already registered.';else{$q=$pdo->prepare('INSERT INTO users(name,email,password) VALUES(?,?,?)');$q->execute([$name,$email,password_hash($pass,PASSWORD_DEFAULT)]);session_regenerate_id(true);$_SESSION['user']=['id'=>(int)$pdo->lastInsertId(),'name'=>$name];header('Location: index.php');exit;}}
+}
+$pageTitle='Create your account';require __DIR__.'/header.php'; ?>
+<section class="auth-layout"><div class="auth-art"><p class="eyebrow">PULL UP A CHAIR</p><h1>Every family<br>has a <em>secret</em><br>ingredient.</h1><p>Here, the best one is sharing.</p><div class="auth-emoji">🥭</div></div><div class="auth-panel"><p class="eyebrow">NEW AROUND HERE?</p><h2>Join the table.</h2><p class="muted">Create an account to browse and share with your neighbors.</p><?php if($errors): ?><div class="form-errors"><?php foreach($errors as $e): ?><p><?= h($e) ?></p><?php endforeach; ?></div><?php endif; ?><form method="post" class="stack-form"><input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>"><label>Your name<input required minlength="2" maxlength="80" name="name" value="<?= h($name) ?>" autocomplete="name"></label><label>Email address<input required type="email" maxlength="254" name="email" value="<?= h($email) ?>" autocomplete="email"></label><label>Password<input required type="password" minlength="8" maxlength="72" name="password" autocomplete="new-password"><small>At least 8 characters.</small></label><button class="button button-dark">Create account <span>→</span></button></form><p class="auth-switch">Already a member? <a href="login.php">Log in</a></p></div></section>
+<?php require __DIR__.'/footer.php'; ?>

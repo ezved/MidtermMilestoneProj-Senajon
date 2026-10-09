@@ -1,0 +1,3 @@
+<?php
+// Comment delete endpoint: verify ownership, remove the note, and return to its recipe.
+require_once __DIR__.'/helpers.php';require_login();if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: index.php');exit;}verify_csrf();$id=filter_var($_POST['id']??null,FILTER_VALIDATE_INT);$q=$pdo->prepare('SELECT recipe_id FROM comments WHERE id=? AND user_id=?');$q->execute([$id,(int)$_SESSION['user']['id']]);$comment=$q->fetch();if($comment){$q=$pdo->prepare('DELETE FROM comments WHERE id=? AND user_id=?');$q->execute([$id,(int)$_SESSION['user']['id']]);flash('Your comment was deleted.');header('Location: recipe.php?id='.(int)$comment['recipe_id'].'#comments');exit;}flash('Comment not found or you do not own it.');header('Location: index.php');exit;
